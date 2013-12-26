@@ -131,6 +131,7 @@ public class POP3 {
             
             log.info("From: "+mail.getSender());
             log.info("To: "+mail.getReceiver());
+            log.info("Subject: "+mail.getSubject());
             log.info("Date: "+sdf_receive.format(mail.getSentDate()));
             log.info("Size: "+mail.getSize());
 
@@ -142,6 +143,8 @@ public class POP3 {
             mails.add(mail);
 
         }
+        
+        log.info("*************************** POP3 End ***************************");        
 
         closePOP3connection(store, inbox);
         return mails;
