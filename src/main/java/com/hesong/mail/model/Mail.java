@@ -1,8 +1,11 @@
 package com.hesong.mail.model;
 
+import java.io.Serializable;
 import java.util.Date;
 
-public class Mail {
+public class Mail implements Serializable{
+
+    private static final long serialVersionUID = 1L;
 
     private String uid;
     private String unitID;

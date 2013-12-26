@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.hesong.mail.model.Mail" table="cc_mail_t_inbox"
+		catalog="mail">
+		<id name="uid" type="string">
+			<column name="UID"/>
+		</id>
+		<property name="unitID" type="string">
+			<column name="UnitID" length="32" not-null="true" />
+		</property>
+		<property name="subject" type="string">
+			<column name="Subject" length="50" not-null="true" /> <!-- unique="true" /> -->
+		</property>
+		<property name="receiver" type="string">
+			<column name="Receiver" length="30" not-null="true" />
+		</property>
+		<property name="sender" type="string">
+			<column name="Sender" length="30" not-null="true" />
+		</property>
+		<property name="sentDate" type="java.util.Date">
+			<column name="SentDate" />
+		</property>
+		<property name="size" type="int">
+			<column name="Size" not-null="true" />
+		</property>
+		<property name="content" type="string">
+			<column name="Content" />
+		</property>
+	</class>
+</hibernate-mapping>

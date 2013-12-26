@@ -6,7 +6,7 @@ public class Email {
     private String password;
     private String sendServer;
     private String receiveServer;
-    private int ssl;  // 1: SLL is enable  0: not
+    private char ssl;  // 1: SLL is enable  0: not
     int interval;
     private String remark;
     private String unitID;
@@ -35,10 +35,10 @@ public class Email {
     public void setReceiveServer(String receiveServer) {
         this.receiveServer = receiveServer;
     }
-    public int getSsl() {
+    public char getSsl() {
         return ssl;
     }
-    public void setSsl(int ssl) {
+    public void setSsl(char ssl) {
         this.ssl = ssl;
     }
     public int getInterval() {

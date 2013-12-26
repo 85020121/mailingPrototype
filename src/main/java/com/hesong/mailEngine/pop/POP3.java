@@ -39,7 +39,7 @@ public class POP3 {
 
     public static Logger log = Logger.getLogger(POP3.getClass());
 
-    static SimpleDateFormat sdf_receive = new SimpleDateFormat("yyyy-MM-dd_HH-mm");
+    static SimpleDateFormat sdf_receive = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
     static SimpleDateFormat sdf_today = new SimpleDateFormat("yyyy-MM-dd");
 
 
@@ -121,10 +121,11 @@ public class POP3 {
             uidList.add(uid);
             Mail mail = new Mail();
             mail.setUid(uid);
-
+            mail.setUnitID("1");
             mail.setSender(RegExp.emailAdressMatcher(msg.getFrom()[0]
                     .toString()));
             mail.setReceiver(email.getAccount());
+            //log.info("SUBJECT IS:"+msg.getSubject());
             mail.setSubject(msg.getSubject());
             mail.setSentDate(msg.getSentDate());
             mail.setSize(msg.getSize());
@@ -167,15 +168,20 @@ public class POP3 {
                 // TO DO
                 String disposition = bodyPart.getDisposition();
                 if (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
-                    String fileName = bodyPart.getFileName();
+//                    String fileName = bodyPart.getFileName();
+                    String fileName = decodeText(bodyPart.getFileName());
                     InputStream is = bodyPart.getInputStream();
                     String dirName = String.format(
-                            "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s_%s\\",sdf_today.format(new Date()),
+                            "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",sdf_today.format(new Date()),
                             mail.getReceiver(), mail.getSender(),
-                            sdf_receive.format(mail.getSentDate()), mail.getUid());
-                    new File(dirName).mkdirs();
-                    log.info("Attachment dir = " + dirName);
-                    copy(is, new FileOutputStream(dirName + fileName));
+                            sdf_receive.format(mail.getSentDate()));//, mail.getUid());
+                    File folder = new File(dirName);
+                    if(folder.mkdirs()){
+                        log.info("Attachment dir = " + dirName);
+                        copy(is, new FileOutputStream(dirName + fileName));
+                    } else {
+                        log.info("Make dir failed: "+dirName);
+                    }
                 }
             }
         }
@@ -192,9 +198,11 @@ public class POP3 {
     public static void copy(InputStream is, OutputStream os) throws IOException {
         byte[] bytes = new byte[1024];
         int len = 0;
+        log.info("Pulling file...");
         while ((len = is.read(bytes)) != -1) {
             os.write(bytes, 0, len);
         }
+        log.info("Done!");
         if (os != null)
             os.close();
         if (is != null)
