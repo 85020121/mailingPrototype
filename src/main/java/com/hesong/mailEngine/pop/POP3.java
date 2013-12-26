@@ -104,6 +104,8 @@ public class POP3 {
 
         Store store = POP3connection(email);
         POP3Folder inbox = getPOP3Inbox(store);
+        
+        log.info("Inbox count: "+getInboxCount(inbox));
 
         // All messages in Inbox
         Message[] messages = inbox.getMessages();
@@ -111,6 +113,7 @@ public class POP3 {
         List<Mail> mails = new ArrayList<Mail>();
 
         for (int i = 0; i < messages.length; i++) {
+            log.info("*************************** POP3 Begin ***************************");
             Message msg = messages[i];
             String uid = inbox.getUID(msg);
             if (uidList.contains(uid))
@@ -125,6 +128,11 @@ public class POP3 {
             mail.setSubject(msg.getSubject());
             mail.setSentDate(msg.getSentDate());
             mail.setSize(msg.getSize());
+            
+            log.info("From: "+mail.getSender());
+            log.info("To: "+mail.getReceiver());
+            log.info("Date: "+sdf_receive.format(mail.getSentDate()));
+            log.info("Size: "+mail.getSize());
 
             Object content = msg.getContent();
             if (content instanceof MimeMultipart) {
@@ -146,6 +154,7 @@ public class POP3 {
             if (bodyPart.isMimeType(TEXT_HTML_CONTENT)) {
                 // Save text/html content
                 mail.setContent((String) bodyPart.getContent());
+                log.info("Content: "+mail.getContent());
             } else if (bodyPart.isMimeType(TEXT_PLAIN_CONTENT)) {
                 // TO DO
             } else if (bodyPart.isMimeType(MULTIPART)) {
