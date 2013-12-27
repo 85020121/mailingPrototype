@@ -1,10 +1,7 @@
 package com.hesong.mailEngine.pop;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -20,11 +17,13 @@ import javax.mail.Store;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.internet.MimeUtility;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.net.ftp.FTPClient;
 
 import com.hesong.factories.PropertiesFactory;
 import com.hesong.mail.model.Email;
 import com.hesong.mail.model.Mail;
+import com.hesong.mailEngine.ftp.POP3FTPclient;
+import com.hesong.mailEngine.tools.MailingLogger;
 import com.hesong.mailEngine.tools.RegExp;
 import com.sun.mail.pop3.POP3Folder;
 
@@ -37,11 +36,10 @@ public class POP3 {
     public static String MULTIPART = "multipart/*";
     public static String OCTET_STREAM = "application/octet-stream";
 
-    public static Logger log = Logger.getLogger(POP3.getClass());
-
-    static SimpleDateFormat sdf_receive = new SimpleDateFormat(
+    public static SimpleDateFormat sdf_receive = new SimpleDateFormat(
             "yyyy-MM-dd_HH-mm-ss");
-    static SimpleDateFormat sdf_today = new SimpleDateFormat("yyyy-MM-dd");
+    public static SimpleDateFormat sdf_today = new SimpleDateFormat(
+            "yyyy-MM-dd");
 
     public static Store POP3connection(Email e) throws MessagingException {
 
@@ -61,11 +59,11 @@ public class POP3 {
     public static void closePOP3connection(Store s, POP3Folder inbox)
             throws MessagingException {
         if (inbox != null) {
-            log.info("Close inbox.");
+            MailingLogger.log.info("Close inbox.");
             inbox.close(true);
         }
         if (s != null) {
-            log.info("Close store.");
+            MailingLogger.log.info("Close store.");
             s.close();
         }
     }
@@ -100,12 +98,12 @@ public class POP3 {
     }
 
     public static List<Mail> getInboxMessages(Email email,
-            ArrayList<String> uidList) throws MessagingException, IOException {
+            List<String> uidList, FTPClient ftp) throws MessagingException, IOException {
 
         Store store = POP3connection(email);
         POP3Folder inbox = getPOP3Inbox(store);
 
-        log.info("Inbox count: " + getInboxCount(inbox));
+        MailingLogger.log.info("Inbox count: " + getInboxCount(inbox));
 
         // All messages in Inbox
         Message[] messages = inbox.getMessages();
@@ -113,7 +111,8 @@ public class POP3 {
         List<Mail> mails = new ArrayList<Mail>();
 
         for (int i = 0; i < messages.length; i++) {
-            log.info("*************************** POP3 Begin ***************************");
+            MailingLogger.log
+                    .info("*************************** POP3 Begin ***************************");
             Message msg = messages[i];
             String uid = inbox.getUID(msg);
             if (uidList.contains(uid))
@@ -130,114 +129,85 @@ public class POP3 {
             mail.setSentDate(msg.getSentDate());
             mail.setSize(msg.getSize());
 
-            log.info("From: " + mail.getSender());
-            log.info("To: " + mail.getReceiver());
-            log.info("Subject: " + mail.getSubject());
-            log.info("Date: " + sdf_receive.format(mail.getSentDate()));
-            log.info("Size: " + mail.getSize());
+            MailingLogger.log.info("From: " + mail.getSender());
+            MailingLogger.log.info("To: " + mail.getReceiver());
+            MailingLogger.log.info("Subject: " + mail.getSubject());
+            MailingLogger.log.info("Date: "
+                    + sdf_receive.format(mail.getSentDate()));
+            MailingLogger.log.info("Size: " + mail.getSize());
 
             Object content = msg.getContent();
             if (content instanceof MimeMultipart) {
-                parseMultipartByMimeType((MimeMultipart) content, mail);
+                parseMultipartByMimeType((MimeMultipart) content, mail, ftp);
             }
 
             mails.add(mail);
 
         }
 
-        log.info("*************************** POP3 End ***************************");
+        MailingLogger.log
+                .info("*************************** POP3 End ***************************");
 
         closePOP3connection(store, inbox);
         return mails;
     }
 
-    public static void parseMultipartByMimeType(Multipart multipart, Mail mail)
+    public static void parseMultipartByMimeType(Multipart multipart, Mail mail, FTPClient ftp)
             throws MessagingException, IOException {
-        log.info("MULTIPART COUNT = " + multipart.getCount());
+        MailingLogger.log.info("MULTIPART COUNT = " + multipart.getCount());
         for (int i = 0; i < multipart.getCount(); i++) {
             BodyPart bodyPart = multipart.getBodyPart(i);
-            log.info("MIMETYPE IS :" + bodyPart.getContentType() + " in part"
-                    + i);
-            log.info("DESCRIPTION: " + bodyPart.getDescription());
+            MailingLogger.log.info("MIMETYPE IS :" + bodyPart.getContentType()
+                    + " in part" + i);
+            MailingLogger.log.info("DESCRIPTION: " + bodyPart.getDescription());
             String disposition = bodyPart.getDisposition();
-            log.info("DISPOSITION: " + disposition);
+            MailingLogger.log.info("DISPOSITION: " + disposition);
             if (disposition != null
                     && disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
-                log.info("This is a attachment");
-                // String fileName = bodyPart.getFileName();
+                MailingLogger.log.info("This is a attachment");
+
                 String fileName = decodeText(bodyPart.getFileName());
                 InputStream is = bodyPart.getInputStream();
-                String dirName = String.format(
-                        "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",
+                
+                String ftpDirName = String.format(
+                        "/Attachment_for_Client/%s/%s/%s/%s/",
                         sdf_today.format(new Date()), mail.getReceiver(),
                         mail.getSender(),
-                        sdf_receive.format(mail.getSentDate()));// ,
-                                                                // mail.getUid());
-                File folder = new File(dirName);
-                if (folder.exists() || folder.mkdirs()) {
-                    log.info("Attachment dir = " + dirName);
-                    copy(is, new FileOutputStream(dirName + fileName));
-                } else {
-                    log.info("Make dir failed: " + dirName);
+                        sdf_receive.format(mail.getSentDate()));
+
+                // FTP UPLOAD
+                if (POP3FTPclient.uploadFile(ftp, ftpDirName, fileName, is)) {
+                    MailingLogger.log
+                            .info("FFFFFFFFFFFFFTTTTTTTTTTTTTTTTPPPPPPPPPPPPP SUCCESS");
                 }
-            }else if (bodyPart.isMimeType(TEXT_HTML_CONTENT)) {
+                
+//                String dirName = String.format(
+//                        "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",
+//                        sdf_today.format(new Date()), mail.getReceiver(),
+//                        mail.getSender(),
+//                        sdf_receive.format(mail.getSentDate()));
+//                File folder = new File(dirName);
+//
+//                if (folder.exists() || folder.mkdirs()) {
+//                    MailingLogger.log.info("Attachment dir = " + dirName);
+//                    AttachmentPuller.copy(is, new FileOutputStream(dirName
+//                            + fileName));
+//                } else {
+//                    MailingLogger.log.info("Make dir failed: " + dirName);
+//                }
+            } else if (bodyPart.isMimeType(TEXT_HTML_CONTENT)) {
                 // Save text/html content
                 mail.setContent((String) bodyPart.getContent());
-                log.info("Content: " + mail.getContent());
+                MailingLogger.log.info("Content: " + mail.getContent());
             } else if (bodyPart.isMimeType(TEXT_PLAIN_CONTENT)) {
                 // TO DO
 
             } else if (bodyPart.isMimeType(MULTIPART)) {
                 parseMultipartByMimeType((Multipart) bodyPart.getContent(),
-                        mail);
-            } 
-//            else {// else if (bodyPart.isMimeType(OCTET_STREAM)) {
-//                    // TO DO
-//                String disposition = bodyPart.getDisposition();
-//                if (true) {// (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT))
-//                           // {
-//                    log.info("This is a attachment");
-//                    // String fileName = bodyPart.getFileName();
-//                    String fileName = decodeText(bodyPart.getFileName());
-//                    InputStream is = bodyPart.getInputStream();
-//                    String dirName = String.format(
-//                            "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",
-//                            sdf_today.format(new Date()), mail.getReceiver(),
-//                            mail.getSender(),
-//                            sdf_receive.format(mail.getSentDate()));// ,
-//                                                                    // mail.getUid());
-//                    File folder = new File(dirName);
-//                    if (folder.exists() || folder.mkdirs()) {
-//                        log.info("Attachment dir = " + dirName);
-//                        copy(is, new FileOutputStream(dirName + fileName));
-//                    } else {
-//                        log.info("Make dir failed: " + dirName);
-//                    }
-//                }
-//            }
+                        mail, ftp);
+            }
         }
 
-    }
-
-    /**
-     * 文件拷贝，在用户进行附件下载的时候，可以把附件的InputStream传给用户进行下载
-     * 
-     * @param is
-     * @param os
-     * @throws IOException
-     */
-    public static void copy(InputStream is, OutputStream os) throws IOException {
-        byte[] bytes = new byte[1024];
-        int len = 0;
-        log.info("Pulling file...");
-        while ((len = is.read(bytes)) != -1) {
-            os.write(bytes, 0, len);
-        }
-        log.info("Done!");
-        if (os != null)
-            os.close();
-        if (is != null)
-            is.close();
     }
 
     protected static String decodeText(String text)
