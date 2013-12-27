@@ -39,9 +39,9 @@ public class POP3 {
 
     public static Logger log = Logger.getLogger(POP3.getClass());
 
-    static SimpleDateFormat sdf_receive = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
+    static SimpleDateFormat sdf_receive = new SimpleDateFormat(
+            "yyyy-MM-dd_HH-mm-ss");
     static SimpleDateFormat sdf_today = new SimpleDateFormat("yyyy-MM-dd");
-
 
     public static Store POP3connection(Email e) throws MessagingException {
 
@@ -104,8 +104,8 @@ public class POP3 {
 
         Store store = POP3connection(email);
         POP3Folder inbox = getPOP3Inbox(store);
-        
-        log.info("Inbox count: "+getInboxCount(inbox));
+
+        log.info("Inbox count: " + getInboxCount(inbox));
 
         // All messages in Inbox
         Message[] messages = inbox.getMessages();
@@ -125,16 +125,16 @@ public class POP3 {
             mail.setSender(RegExp.emailAdressMatcher(msg.getFrom()[0]
                     .toString()));
             mail.setReceiver(email.getAccount());
-            //log.info("SUBJECT IS:"+msg.getSubject());
+            // log.info("SUBJECT IS:"+msg.getSubject());
             mail.setSubject(msg.getSubject());
             mail.setSentDate(msg.getSentDate());
             mail.setSize(msg.getSize());
-            
-            log.info("From: "+mail.getSender());
-            log.info("To: "+mail.getReceiver());
-            log.info("Subject: "+mail.getSubject());
-            log.info("Date: "+sdf_receive.format(mail.getSentDate()));
-            log.info("Size: "+mail.getSize());
+
+            log.info("From: " + mail.getSender());
+            log.info("To: " + mail.getReceiver());
+            log.info("Subject: " + mail.getSubject());
+            log.info("Date: " + sdf_receive.format(mail.getSentDate()));
+            log.info("Size: " + mail.getSize());
 
             Object content = msg.getContent();
             if (content instanceof MimeMultipart) {
@@ -144,8 +144,8 @@ public class POP3 {
             mails.add(mail);
 
         }
-        
-        log.info("*************************** POP3 End ***************************");        
+
+        log.info("*************************** POP3 End ***************************");
 
         closePOP3connection(store, inbox);
         return mails;
@@ -153,44 +153,68 @@ public class POP3 {
 
     public static void parseMultipartByMimeType(Multipart multipart, Mail mail)
             throws MessagingException, IOException {
-        log.info("MULTIPART COUNT = "+multipart.getCount());
+        log.info("MULTIPART COUNT = " + multipart.getCount());
         for (int i = 0; i < multipart.getCount(); i++) {
             BodyPart bodyPart = multipart.getBodyPart(i);
-            log.info("MIMETYPE IS :"+bodyPart.getContentType()+" in part"+i);
-            log.info("DESCRIPTION: "+bodyPart.getDescription());
-            log.info("DISPOSITION: "+bodyPart.getDisposition());
-            log.info("DISPOSITION: "+bodyPart.getDisposition());
-            if (bodyPart.isMimeType(TEXT_HTML_CONTENT)) {
+            log.info("MIMETYPE IS :" + bodyPart.getContentType() + " in part"
+                    + i);
+            log.info("DESCRIPTION: " + bodyPart.getDescription());
+            String disposition = bodyPart.getDisposition();
+            log.info("DISPOSITION: " + disposition);
+            if (disposition != null
+                    && disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
+                log.info("This is a attachment");
+                // String fileName = bodyPart.getFileName();
+                String fileName = decodeText(bodyPart.getFileName());
+                InputStream is = bodyPart.getInputStream();
+                String dirName = String.format(
+                        "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",
+                        sdf_today.format(new Date()), mail.getReceiver(),
+                        mail.getSender(),
+                        sdf_receive.format(mail.getSentDate()));// ,
+                                                                // mail.getUid());
+                File folder = new File(dirName);
+                if (folder.exists() || folder.mkdirs()) {
+                    log.info("Attachment dir = " + dirName);
+                    copy(is, new FileOutputStream(dirName + fileName));
+                } else {
+                    log.info("Make dir failed: " + dirName);
+                }
+            }else if (bodyPart.isMimeType(TEXT_HTML_CONTENT)) {
                 // Save text/html content
                 mail.setContent((String) bodyPart.getContent());
-                log.info("Content: "+mail.getContent());
+                log.info("Content: " + mail.getContent());
             } else if (bodyPart.isMimeType(TEXT_PLAIN_CONTENT)) {
                 // TO DO
-                
+
             } else if (bodyPart.isMimeType(MULTIPART)) {
                 parseMultipartByMimeType((Multipart) bodyPart.getContent(),
                         mail);
-            } else{//else if (bodyPart.isMimeType(OCTET_STREAM)) {
-                // TO DO
-                String disposition = bodyPart.getDisposition();
-                if (true){//(disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
-                     log.info("This is a attachment"); 
-//                    String fileName = bodyPart.getFileName();
-                    String fileName = decodeText(bodyPart.getFileName());
-                    InputStream is = bodyPart.getInputStream();
-                    String dirName = String.format(
-                            "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",sdf_today.format(new Date()),
-                            mail.getReceiver(), mail.getSender(),
-                            sdf_receive.format(mail.getSentDate()));//, mail.getUid());
-                    File folder = new File(dirName);
-                    if(folder.exists() || folder.mkdirs()){
-                        log.info("Attachment dir = " + dirName);
-                        copy(is, new FileOutputStream(dirName + fileName));
-                    } else {
-                        log.info("Make dir failed: "+dirName);
-                    }
-                }
-            }
+            } 
+//            else {// else if (bodyPart.isMimeType(OCTET_STREAM)) {
+//                    // TO DO
+//                String disposition = bodyPart.getDisposition();
+//                if (true) {// (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT))
+//                           // {
+//                    log.info("This is a attachment");
+//                    // String fileName = bodyPart.getFileName();
+//                    String fileName = decodeText(bodyPart.getFileName());
+//                    InputStream is = bodyPart.getInputStream();
+//                    String dirName = String.format(
+//                            "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",
+//                            sdf_today.format(new Date()), mail.getReceiver(),
+//                            mail.getSender(),
+//                            sdf_receive.format(mail.getSentDate()));// ,
+//                                                                    // mail.getUid());
+//                    File folder = new File(dirName);
+//                    if (folder.exists() || folder.mkdirs()) {
+//                        log.info("Attachment dir = " + dirName);
+//                        copy(is, new FileOutputStream(dirName + fileName));
+//                    } else {
+//                        log.info("Make dir failed: " + dirName);
+//                    }
+//                }
+//            }
         }
 
     }
