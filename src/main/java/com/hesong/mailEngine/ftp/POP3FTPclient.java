@@ -24,9 +24,9 @@ public class POP3FTPclient {
             ftp.disconnect();
             return null; // 连接建立失败
         }
-        
+
         ftp.setFileType(FTPClient.BINARY_FILE_TYPE);
-        
+
         return ftp;
     }
 
@@ -52,16 +52,17 @@ public class POP3FTPclient {
     }
 
     public static boolean mkdir(FTPClient ftp, String path) throws IOException {
-        MailingLogger.log.info("ftp status: "+ftp.getStatus());
+        MailingLogger.log.info("ftp status: " + ftp.getStatus());
 
         MailingLogger.log.info("Destination directory before: "
                 + ftp.printWorkingDirectory());
-        if (ftp.changeWorkingDirectory(path)
-                || FTPReply.isPositiveCompletion(ftp.mkd(path))) {
-            ftp.changeWorkingDirectory(path);
-        } else {
-            MailingLogger.log.info("Make dir failed with path: " + path);
-            return false;
+        if (!ftp.changeWorkingDirectory(path)) {
+            if (FTPReply.isPositiveCompletion(ftp.mkd(path))) {
+                ftp.changeWorkingDirectory(path);
+            } else {
+                MailingLogger.log.info("Make dir failed with path: " + path);
+                return false;
+            }
         }
 
         MailingLogger.log.info("Destination directory: "
@@ -77,12 +78,12 @@ public class POP3FTPclient {
         OutputStream output = ftp.storeFileStream(filename);
         AttachmentPuller.copy(input, output);
 
-        if(!ftp.completePendingCommand()) {
+        if (!ftp.completePendingCommand()) {
             MailingLogger.log.info("File transfer failed.");
             // TO DO
-//            ftp.logout();
-//            ftp.disconnect();
-//            System.exit(1);
+            // ftp.logout();
+            // ftp.disconnect();
+            // System.exit(1);
         }
         return true;
     }

@@ -12,6 +12,14 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.SimpleScheduleBuilder;
+import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
+import org.quartz.impl.StdSchedulerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
@@ -23,6 +31,7 @@ import com.hesong.mail.model.Mail;
 import com.hesong.mailEngine.ftp.POP3FTPclient;
 import com.hesong.mailEngine.pop.POP3;
 import com.hesong.mailEngine.tools.MailingLogger;
+import com.hesong.quartz.QuartzHello;
 
 public class POP3Test {
     
@@ -33,9 +42,13 @@ public class POP3Test {
     @Before
     public void testSetup() throws IOException {
         e = new Email();
-        e.setAccount("bowen_test11@163.com");
-        e.setPassword("waiwai33");
-        e.setReceiveServer("pop3.163.com");
+//        e.setAccount("bowen_test11@163.com");
+//        e.setPassword("waiwai33");
+//        e.setReceiveServer("pop3.163.com");        
+        
+        e.setAccount("test@koyoo.cn");
+        e.setPassword("test123456");
+        e.setReceiveServer("pop.koyoo.cn");
         
         uidList = new ArrayList<>();
         
@@ -49,11 +62,7 @@ public class POP3Test {
     }
 
     @Test
-    public void testInboxCount() throws MessagingException, IOException {
-        Email e = new Email();
-        e.setAccount("bowen_test11@163.com");
-        e.setPassword("waiwai33");
-        e.setReceiveServer("pop3.163.com");
+    public void testInboxCount() throws MessagingException, IOException {;
 
         assertTrue(POP3.getInboxCount(e) == 5);
     }
@@ -81,5 +90,24 @@ public class POP3Test {
         
         POP3FTPclient.mkdir(ftp, "/mkdir_test/ttt/bbbbbbbb/asada/aw/a/adas");
         assertTrue(true);
+    }
+    
+    @Test
+    public void quartzTest() throws SchedulerException{
+        JobDetail job = JobBuilder.newJob(QuartzHello.class).withIdentity("firstJob", "group1").build();
+        
+        Trigger trigger = TriggerBuilder
+                .newTrigger()
+                .withIdentity("firstJob", "group1")
+                .withSchedule(
+                    SimpleScheduleBuilder.simpleSchedule()
+                        .withIntervalInSeconds(60).repeatForever())
+                .build();
+        
+        Scheduler scheduler = new StdSchedulerFactory().getScheduler();
+        scheduler.start();
+        scheduler.scheduleJob(job, trigger);
+        
+        //assertTrue(true);
     }
 }
