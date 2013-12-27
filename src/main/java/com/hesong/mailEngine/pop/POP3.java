@@ -153,21 +153,28 @@ public class POP3 {
 
     public static void parseMultipartByMimeType(Multipart multipart, Mail mail)
             throws MessagingException, IOException {
+        log.info("MULTIPART COUNT = "+multipart.getCount());
         for (int i = 0; i < multipart.getCount(); i++) {
             BodyPart bodyPart = multipart.getBodyPart(i);
+            log.info("MIMETYPE IS :"+bodyPart.getContentType()+" in part"+i);
+            log.info("DESCRIPTION: "+bodyPart.getDescription());
+            log.info("DISPOSITION: "+bodyPart.getDisposition());
+            log.info("DISPOSITION: "+bodyPart.getDisposition());
             if (bodyPart.isMimeType(TEXT_HTML_CONTENT)) {
                 // Save text/html content
                 mail.setContent((String) bodyPart.getContent());
                 log.info("Content: "+mail.getContent());
             } else if (bodyPart.isMimeType(TEXT_PLAIN_CONTENT)) {
                 // TO DO
+                
             } else if (bodyPart.isMimeType(MULTIPART)) {
                 parseMultipartByMimeType((Multipart) bodyPart.getContent(),
                         mail);
-            } else if (bodyPart.isMimeType(OCTET_STREAM)) {
+            } else{//else if (bodyPart.isMimeType(OCTET_STREAM)) {
                 // TO DO
                 String disposition = bodyPart.getDisposition();
-                if (disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
+                if (true){//(disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
+                     log.info("This is a attachment"); 
 //                    String fileName = bodyPart.getFileName();
                     String fileName = decodeText(bodyPart.getFileName());
                     InputStream is = bodyPart.getInputStream();
@@ -176,7 +183,7 @@ public class POP3 {
                             mail.getReceiver(), mail.getSender(),
                             sdf_receive.format(mail.getSentDate()));//, mail.getUid());
                     File folder = new File(dirName);
-                    if(folder.mkdirs()){
+                    if(folder.exists() || folder.mkdirs()){
                         log.info("Attachment dir = " + dirName);
                         copy(is, new FileOutputStream(dirName + fileName));
                     } else {
