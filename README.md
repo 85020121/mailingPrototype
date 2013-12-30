@@ -8,3 +8,6 @@ mailingPrototype
   3. 修改../src/main/resources/hibernate/Mail.hbm.xml文件中
 	      <class name="com.hesong.mail.model.Mail" table="cc_mail_t_inbox" catalog="mail">
 	   catalog参数，catalog="数据库名"
+
+
+* MySQL中"SSL"和"Interval"属于保留字段，insert时会引起错误，字段更名为"IS_SSL"和"TimeInterval". （坑爹）
