@@ -41,7 +41,7 @@ public class QuartzMain {
         List<Account> list = (List<Account>) accountBo.getAllAccount();
         MailBo mailBo = (MailBo) appContext.getBean("mailBo");
 
-        Scheduler scheduler = new StdSchedulerFactory().getScheduler();
+        Scheduler scheduler = new StdSchedulerFactory("quartz.properties").getScheduler();
 
         for (int i = 0; i < list.size(); i++) {
             Account a = list.get(i);
