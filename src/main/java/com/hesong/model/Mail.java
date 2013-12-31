@@ -1,4 +1,4 @@
-package com.hesong.mail.model;
+package com.hesong.model;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -7,6 +7,7 @@ public class Mail implements Serializable{
 
     private static final long serialVersionUID = 1L;
 
+    private Integer id;
     private String uid;
     private String unitID;
     private String sender;
@@ -16,6 +17,12 @@ public class Mail implements Serializable{
     private int size;
     private String content;
     
+    public Integer getId() {
+        return id;
+    }
+    public void setId(Integer id) {
+        this.id = id;
+    }
     public String getUid() {
         return uid;
     }

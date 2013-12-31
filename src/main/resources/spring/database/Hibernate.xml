@@ -21,7 +21,8 @@ http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
 
 		<property name="mappingResources">
 			<list>
-				<value>/hibernate/Mail.hbm.xml</value>
+                <value>/hibernate/Mail.hbm.xml</value>
+                <value>/hibernate/Account.hbm.xml</value>
 			</list>
 		</property>
 		

@@ -1,4 +1,4 @@
-package com.hesong.mail.model;
+package com.hesong.model;
 
 public class Protocol {
     

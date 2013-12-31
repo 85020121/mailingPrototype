@@ -6,9 +6,11 @@ import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.List;
 
 import javax.mail.BodyPart;
+import javax.mail.Header;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Multipart;
@@ -20,11 +22,11 @@ import javax.mail.internet.MimeUtility;
 import org.apache.commons.net.ftp.FTPClient;
 
 import com.hesong.factories.PropertiesFactory;
-import com.hesong.mail.model.Email;
-import com.hesong.mail.model.Mail;
 import com.hesong.mailEngine.ftp.POP3FTPclient;
 import com.hesong.mailEngine.tools.MailingLogger;
 import com.hesong.mailEngine.tools.RegExp;
+import com.hesong.model.Account;
+import com.hesong.model.Mail;
 import com.sun.mail.pop3.POP3Folder;
 
 public class POP3 {
@@ -41,12 +43,14 @@ public class POP3 {
     public static SimpleDateFormat sdf_today = new SimpleDateFormat(
             "yyyy-MM-dd");
 
-    public static Store POP3connection(Email e) throws MessagingException {
+    public static Store POP3connection(Account a) throws MessagingException {
 
         Session session = Session.getDefaultInstance(PropertiesFactory
-                .POP3Factory(e));
+                .POP3Factory(a));
         Store store = session.getStore(POP3);
-        store.connect(e.getAccount(), e.getPassword());
+        MailingLogger.log.info("Build POP3 connection, Acccount = "
+                + a.getAccount() + " Password = " + a.getPassword());
+        store.connect(a.getAccount(), a.getPassword());
         return store;
     }
 
@@ -76,8 +80,8 @@ public class POP3 {
      * @return 收件箱中邮件数量
      * @throws MessagingException
      */
-    public static int getInboxCount(Email email) throws MessagingException {
-        Store s = POP3connection(email);
+    public static int getInboxCount(Account account) throws MessagingException {
+        Store s = POP3connection(account);
         POP3Folder inbox = getPOP3Inbox(s);
         int count = inbox.getMessageCount();
         closePOP3connection(s, inbox);
@@ -97,10 +101,9 @@ public class POP3 {
         return inbox.getMessageCount();
     }
 
-    public static List<Mail> getInboxMessages(Email email,
-            List<String> uidList, FTPClient ftp) throws MessagingException, IOException {
-
-        Store store = POP3connection(email);
+    public static List<Mail> getInboxMessages(Account account, FTPClient ftp)
+            throws MessagingException, IOException {
+        Store store = POP3connection(account);
         POP3Folder inbox = getPOP3Inbox(store);
 
         MailingLogger.log.info("Inbox count: " + getInboxCount(inbox));
@@ -111,20 +114,21 @@ public class POP3 {
         List<Mail> mails = new ArrayList<Mail>();
 
         for (int i = 0; i < messages.length; i++) {
-            MailingLogger.log
-                    .info("*************************** POP3 Begin ***************************");
             Message msg = messages[i];
             String uid = inbox.getUID(msg);
-            if (uidList.contains(uid))
+            if (account.getUidList().contains(uid))
                 continue; // Message already downloaded, jump
-            uidList.add(uid);
+            MailingLogger.log
+                    .info("*************************** POP3 Begin ***************************");
+
+            account.getUidList().add(uid);
+
             Mail mail = new Mail();
             mail.setUid(uid);
             mail.setUnitID("1");
             mail.setSender(RegExp.emailAdressMatcher(msg.getFrom()[0]
                     .toString()));
-            mail.setReceiver(email.getAccount());
-            // log.info("SUBJECT IS:"+msg.getSubject());
+            mail.setReceiver(account.getAccount());
             mail.setSubject(msg.getSubject());
             mail.setSentDate(msg.getSentDate());
             mail.setSize(msg.getSize());
@@ -152,8 +156,8 @@ public class POP3 {
         return mails;
     }
 
-    public static void parseMultipartByMimeType(Multipart multipart, Mail mail, FTPClient ftp)
-            throws MessagingException, IOException {
+    public static void parseMultipartByMimeType(Multipart multipart, Mail mail,
+            FTPClient ftp) throws MessagingException, IOException {
         MailingLogger.log.info("MULTIPART COUNT = " + multipart.getCount());
         for (int i = 0; i < multipart.getCount(); i++) {
             BodyPart bodyPart = multipart.getBodyPart(i);
@@ -162,13 +166,28 @@ public class POP3 {
             MailingLogger.log.info("DESCRIPTION: " + bodyPart.getDescription());
             String disposition = bodyPart.getDisposition();
             MailingLogger.log.info("DISPOSITION: " + disposition);
+            MailingLogger.log
+                    .info("CONTENT TYPE: " + bodyPart.getContentType());
+            MailingLogger.log.info("FILE NAME: " + bodyPart.getFileName());
+            @SuppressWarnings("rawtypes")
+            Enumeration headers = bodyPart.getAllHeaders();
+            while (headers != null && headers.hasMoreElements()) {
+                Header header = (Header) headers.nextElement();
+                MailingLogger.log.info(header.getName() + " ======= "
+                        + header.getValue());
+            }
+
             if (disposition != null
+                    && disposition.equalsIgnoreCase(BodyPart.INLINE)) {
+                // TO DO
+
+            } else if (disposition != null
                     && disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
                 MailingLogger.log.info("This is a attachment");
 
                 String fileName = decodeText(bodyPart.getFileName());
                 InputStream is = bodyPart.getInputStream();
-                
+
                 String ftpDirName = String.format(
                         "/Attachment_for_Client/%s/%s/%s/%s/",
                         sdf_today.format(new Date()), mail.getReceiver(),
@@ -180,21 +199,21 @@ public class POP3 {
                     MailingLogger.log
                             .info("FFFFFFFFFFFFFTTTTTTTTTTTTTTTTPPPPPPPPPPPPP SUCCESS");
                 }
-                
-//                String dirName = String.format(
-//                        "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",
-//                        sdf_today.format(new Date()), mail.getReceiver(),
-//                        mail.getSender(),
-//                        sdf_receive.format(mail.getSentDate()));
-//                File folder = new File(dirName);
-//
-//                if (folder.exists() || folder.mkdirs()) {
-//                    MailingLogger.log.info("Attachment dir = " + dirName);
-//                    AttachmentPuller.copy(is, new FileOutputStream(dirName
-//                            + fileName));
-//                } else {
-//                    MailingLogger.log.info("Make dir failed: " + dirName);
-//                }
+
+                // String dirName = String.format(
+                // "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",
+                // sdf_today.format(new Date()), mail.getReceiver(),
+                // mail.getSender(),
+                // sdf_receive.format(mail.getSentDate()));
+                // File folder = new File(dirName);
+                //
+                // if (folder.exists() || folder.mkdirs()) {
+                // MailingLogger.log.info("Attachment dir = " + dirName);
+                // AttachmentPuller.copy(is, new FileOutputStream(dirName
+                // + fileName));
+                // } else {
+                // MailingLogger.log.info("Make dir failed: " + dirName);
+                // }
             } else if (bodyPart.isMimeType(TEXT_HTML_CONTENT)) {
                 // Save text/html content
                 mail.setContent((String) bodyPart.getContent());

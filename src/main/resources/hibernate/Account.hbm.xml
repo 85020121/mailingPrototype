@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.hesong.model.Account" table="cc_mgr_t_email"
+		catalog="mail">
+
+		<id name="id" column="ID" type="string">
+			<generator class="assigned" />
+		</id>
+
+		<property name="sendServer" type="string">
+			<column name="SendServer" length="64" not-null="true" />
+		</property>
+		<property name="receiveServer" type="string">
+			<column name="ReceiveServer" length="64" not-null="true" />
+		</property>
+		<property name="account" type="string">
+			<column name="Account" length="32" not-null="true" />
+		</property>
+		<property name="password" type="string">
+			<column name="Password" length="32" />
+		</property>
+		<property name="ssl" type="char">
+			<column name="IS_SSL" length="1" />
+		</property>
+		<property name="interval" type="int">
+			<column name="TimeInterval" />
+		</property>
+		<property name="remark" type="string">
+			<column name="Remark" length="256" />
+		</property>
+		<property name="unitID" type="string">
+			<column name="UnitID" length="32" />
+		</property>
+	</class>
+</hibernate-mapping>

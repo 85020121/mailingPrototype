@@ -3,13 +3,13 @@ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xsi:schemaLocation="http://www.springframework.org/schema/beans
 http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
  
-    <!-- Mail business object -->
-   <bean id="mailBo" class="com.hesong.bo.impl.MailBoImpl" >
-        <property name="mailDao" ref="mailDao" />
+    <!-- Account business object -->
+   <bean id="accountBo" class="com.hesong.bo.impl.AccountBoImpl" >
+        <property name="accountDao" ref="accountDao" />
    </bean>
  
-   <!-- Mail Data Access Object -->
-   <bean id="mailDao" class="com.hesong.dao.impl.MailDaoImpl" >
+   <!-- Account Data Access Object -->
+   <bean id="accountDao" class="com.hesong.dao.impl.AccountDaoImpl" >
         <property name="sessionFactory" ref="sessionFactory"></property>
    </bean>
  

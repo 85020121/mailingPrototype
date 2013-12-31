@@ -12,102 +12,108 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.quartz.JobBuilder;
-import org.quartz.JobDetail;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleScheduleBuilder;
-import org.quartz.Trigger;
-import org.quartz.TriggerBuilder;
-import org.quartz.impl.StdSchedulerFactory;
+
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-import sun.net.ftp.FtpProtocolException;
-
-import com.hesong.mail.bo.MailBo;
-import com.hesong.mail.model.Email;
-import com.hesong.mail.model.Mail;
+import com.hesong.bo.AccountBo;
+import com.hesong.bo.MailBo;
 import com.hesong.mailEngine.ftp.POP3FTPclient;
 import com.hesong.mailEngine.pop.POP3;
 import com.hesong.mailEngine.tools.MailingLogger;
-import com.hesong.quartz.QuartzHello;
+import com.hesong.model.Account;
+import com.hesong.model.Mail;
 
 public class POP3Test {
-    
-    Email e;
+
+    Account a;
     List<String> uidList;
     FTPClient ftp;
-    
+    ApplicationContext appContext;
+    MailBo mailBo;
+    AccountBo accountBo;
+
+    @SuppressWarnings("unchecked")
     @Before
     public void testSetup() throws IOException {
-        e = new Email();
-//        e.setAccount("bowen_test11@163.com");
-//        e.setPassword("waiwai33");
-//        e.setReceiveServer("pop3.163.com");        
+
+        //a = new Account("bowen_test11@163.com", "waiwai33", "pop3.163.com");
+        // a = new Email("test@koyoo.cn", "test123456", "125.93.53.89");
+
+        ftp = POP3FTPclient.getFTPclientConnection("127.0.0.1", 21, "bowen",
+                "waiwai");
+
+        appContext = new ClassPathXmlApplicationContext(
+                "spring/config/BeanLocations.xml");
+        accountBo = (AccountBo) appContext.getBean("accountBo");
+        a = (Account)accountBo.getAllAccount().get(0);
         
-        e.setAccount("test@koyoo.cn");
-        e.setPassword("test123456");
-        e.setReceiveServer("pop.koyoo.cn");
+        mailBo = (MailBo) appContext.getBean("mailBo");
+        a.setUidList((ArrayList<String>)mailBo.getUIDList(a.getAccount()));
         
-        uidList = new ArrayList<>();
-        
-        ftp = POP3FTPclient.getFTPclientConnection("127.0.0.1", 21, "bowen", "waiwai");
     }
 
     @After
     public void testCleanup() throws IOException {
-      // Teardown for data used by the unit tests
+        // Teardown for data used by the unit tests
         POP3FTPclient.disconnect(ftp);
+        ((ConfigurableApplicationContext) appContext).close();
     }
 
     @Test
-    public void testInboxCount() throws MessagingException, IOException {;
+    public void testInboxCount() throws MessagingException, IOException {
 
-        assertTrue(POP3.getInboxCount(e) == 5);
+        assertTrue(POP3.getInboxCount(a) == 4);
+    }
+
+    @Test
+    public void getUIDlistTest() throws MessagingException, IOException {
+
+        @SuppressWarnings("rawtypes")
+        List list = mailBo.getUIDList(a.getAccount());
+        MailingLogger.log.info("LIST: " + list);
+    }
+
+    @SuppressWarnings("rawtypes")
+    @Test
+    public void findByUnitIDandEmailTest() {
+        List list = mailBo.findByUnitIDandEmail("1", a.getAccount());
+        MailingLogger.log.info("LIST: " + list);
     }
 
     @Test
     public void databaseTest() throws MessagingException, IOException {
-        ApplicationContext appContext = new ClassPathXmlApplicationContext("spring/config/BeanLocations.xml");
-        
-        MailBo mailBo = (MailBo)appContext.getBean("mailBo");
-                
-        List<Mail> list = POP3.getInboxMessages(e, uidList, ftp);
-        MailingLogger.log.info(list.get(0));
-        mailBo.save(list.get(0));
-    }
-    
-    @Test
-    public void ftpTest() throws IOException, MessagingException{
-        
-        POP3.getInboxMessages(e, uidList, ftp);
-        assertTrue(true);
+
+        List<Mail> list = POP3.getInboxMessages(a, ftp);
+        mailBo.save(list);
     }
 
     @Test
-    public void ftpMkdirTest() throws IOException, FtpProtocolException{
-        
-        POP3FTPclient.mkdir(ftp, "/mkdir_test/ttt/bbbbbbbb/asada/aw/a/adas");
+    public void ftpTest() throws IOException, MessagingException {
+
+        POP3.getInboxMessages(a, ftp);
         assertTrue(true);
     }
+
     
     @Test
-    public void quartzTest() throws SchedulerException{
-        JobDetail job = JobBuilder.newJob(QuartzHello.class).withIdentity("firstJob", "group1").build();
+    public void accountDBTest(){
+        Account a = new Account("test", "test", "test");
+        a.setId("asdasa");
+        a.setInterval(45);
+        a.setSendServer("eexxaa");
+        a.setSsl('1');
+        a.setUnitID("asdaaaasd");
+        a.setRemark("测试");
+       // accountBo.save(a);
         
-        Trigger trigger = TriggerBuilder
-                .newTrigger()
-                .withIdentity("firstJob", "group1")
-                .withSchedule(
-                    SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(60).repeatForever())
-                .build();
+        Account a2 = new Account("qaaaa", "asqqwq", "asdsad");
         
-        Scheduler scheduler = new StdSchedulerFactory().getScheduler();
-        scheduler.start();
-        scheduler.scheduleJob(job, trigger);
-        
-        //assertTrue(true);
+        List<Account> list = new ArrayList<>();
+        list.add(a);
+        list.add(a2);
+        accountBo.saveAll(list);
+        assertTrue(true);
     }
 }
