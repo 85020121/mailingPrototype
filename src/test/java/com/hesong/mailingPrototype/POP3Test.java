@@ -12,7 +12,6 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
@@ -20,6 +19,7 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 import com.hesong.bo.AccountBo;
 import com.hesong.bo.MailBo;
 import com.hesong.mailEngine.ftp.POP3FTPclient;
+import com.hesong.mailEngine.ftp.factories.FTPConnectionFactory;
 import com.hesong.mailEngine.pop.POP3;
 import com.hesong.mailEngine.tools.MailingLogger;
 import com.hesong.model.Account;
@@ -38,20 +38,20 @@ public class POP3Test {
     @Before
     public void testSetup() throws IOException {
 
-        //a = new Account("bowen_test11@163.com", "waiwai33", "pop3.163.com");
+        // a = new Account("bowen_test11@163.com", "waiwai33", "pop3.163.com");
         // a = new Email("test@koyoo.cn", "test123456", "125.93.53.89");
 
-        ftp = POP3FTPclient.getFTPclientConnection("127.0.0.1", 21, "bowen",
+        ftp = FTPConnectionFactory.getFTPClientConnection("127.0.0.1", 21, "bowen",
                 "waiwai");
 
         appContext = new ClassPathXmlApplicationContext(
                 "spring/config/BeanLocations.xml");
         accountBo = (AccountBo) appContext.getBean("accountBo");
-        a = (Account)accountBo.getAllAccount().get(0);
-        
+        a = (Account) accountBo.getAllAccount().get(0);
+
         mailBo = (MailBo) appContext.getBean("mailBo");
-        a.setUidList((ArrayList<String>)mailBo.getUIDList(a.getAccount()));
-        
+        a.setUidList((ArrayList<String>) mailBo.getUIDList(a.getAccount()));
+
     }
 
     @After
@@ -96,9 +96,8 @@ public class POP3Test {
         assertTrue(true);
     }
 
-    
     @Test
-    public void accountDBTest(){
+    public void accountDBTest() {
         Account a = new Account("test", "test", "test");
         a.setId("asdasa");
         a.setInterval(45);
@@ -106,14 +105,21 @@ public class POP3Test {
         a.setSsl('1');
         a.setUnitID("asdaaaasd");
         a.setRemark("测试");
-       // accountBo.save(a);
-        
+        // accountBo.save(a);
+
         Account a2 = new Account("qaaaa", "asqqwq", "asdsad");
-        
+
         List<Account> list = new ArrayList<>();
         list.add(a);
         list.add(a2);
         accountBo.saveAll(list);
         assertTrue(true);
+    }
+
+    @Test
+    public void stringTest() {
+        String content = "<img src=\"cid:ii_14331e6f7a57815f\" alt=";
+        content = content.replace("cid:ii_14331e6f7a57815f", "test");
+        assertTrue(content.equals("<img src=\"test\" alt="));
     }
 }

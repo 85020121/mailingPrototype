@@ -1,4 +1,4 @@
-package com.hesong.quartz;
+package com.hesong.quartz.job;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -18,7 +18,7 @@ import com.hesong.mailEngine.tools.MailingLogger;
 import com.hesong.model.Account;
 import com.hesong.model.Mail;
 
-public class PullingMail implements Job {
+public class PullingMailJob implements Job {
 
     public static final String ACCOUNT_FLAG = "account";
     public static final String FTP_FLAG = "ftp";
@@ -41,14 +41,16 @@ public class PullingMail implements Job {
             inbox = POP3.getInboxMessages(account, ftp);
             if (inbox.size()>0) {
                 mailBo.save(inbox);
+                MailingLogger.log.info(inbox.size()+" mails received.");;
             } else {
                 MailingLogger.log.info("No more new mails.");
             }
 
         } catch (IOException | MessagingException e) {
             MailingLogger.log.info("Exception message: " + e.toString());
-            MailingLogger.log.info("caused by account: "
+            MailingLogger.log.info("Caused by account: "
                     + account.getAccount());
+            e.printStackTrace();
             return;
         }
 

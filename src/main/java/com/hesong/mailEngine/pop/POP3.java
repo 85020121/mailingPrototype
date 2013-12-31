@@ -3,6 +3,7 @@ package com.hesong.mailEngine.pop;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.SocketException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -23,6 +24,7 @@ import org.apache.commons.net.ftp.FTPClient;
 
 import com.hesong.factories.PropertiesFactory;
 import com.hesong.mailEngine.ftp.POP3FTPclient;
+import com.hesong.mailEngine.ftp.factories.FTPConnectionFactory;
 import com.hesong.mailEngine.tools.MailingLogger;
 import com.hesong.mailEngine.tools.RegExp;
 import com.hesong.model.Account;
@@ -31,12 +33,13 @@ import com.sun.mail.pop3.POP3Folder;
 
 public class POP3 {
 
-    public static String INBOX = "INBOX";
-    public static String POP3 = "pop3";
-    public static String TEXT_HTML_CONTENT = "text/html";
-    public static String TEXT_PLAIN_CONTENT = "text/plain";
-    public static String MULTIPART = "multipart/*";
-    public static String OCTET_STREAM = "application/octet-stream";
+    public final static String INBOX = "INBOX";
+    public final static String POP3 = "pop3";
+    public final static String TEXT_HTML_CONTENT = "text/html";
+    public final static String TEXT_PLAIN_CONTENT = "text/plain";
+    public final static String MULTIPART = "multipart/*";
+    public final static String OCTET_STREAM = "application/octet-stream";
+    public final static String CONTENT_ID = "Content-ID";
 
     public static SimpleDateFormat sdf_receive = new SimpleDateFormat(
             "yyyy-MM-dd_HH-mm-ss");
@@ -45,11 +48,15 @@ public class POP3 {
 
     public static Store POP3connection(Account a) throws MessagingException {
 
-        Session session = Session.getDefaultInstance(PropertiesFactory
-                .POP3Factory(a));
+        // Method getDefaultInstance retrun a static session, what we need is a
+        // new session for every account
+        // Session session = Session.getDefaultInstance(PropertiesFactory
+        // .POP3Factory(a));
+        Session session = Session.getInstance(PropertiesFactory.POP3Factory(a));
         Store store = session.getStore(POP3);
         MailingLogger.log.info("Build POP3 connection, Acccount = "
                 + a.getAccount() + " Password = " + a.getPassword());
+
         store.connect(a.getAccount(), a.getPassword());
         return store;
     }
@@ -103,14 +110,19 @@ public class POP3 {
 
     public static List<Mail> getInboxMessages(Account account, FTPClient ftp)
             throws MessagingException, IOException {
-        Store store = POP3connection(account);
-        POP3Folder inbox = getPOP3Inbox(store);
+        Store store = null;
+        POP3Folder inbox = null;
 
-        MailingLogger.log.info("Inbox count: " + getInboxCount(inbox));
+        try {
+            store = POP3connection(account);
+            inbox = getPOP3Inbox(store);
+        } catch (MessagingException e) {
+            closePOP3connection(store, inbox);
+            MailingLogger.log.info("Build POP3 connection failed, caused by: "
+                    + e.toString());
+        }
 
-        // All messages in Inbox
         Message[] messages = inbox.getMessages();
-
         List<Mail> mails = new ArrayList<Mail>();
 
         for (int i = 0; i < messages.length; i++) {
@@ -119,7 +131,7 @@ public class POP3 {
             if (account.getUidList().contains(uid))
                 continue; // Message already downloaded, jump
             MailingLogger.log
-                    .info("*************************** POP3 Begin ***************************");
+                    .info("*************************** POP3 pulling mail ***************************");
 
             account.getUidList().add(uid);
 
@@ -133,14 +145,15 @@ public class POP3 {
             mail.setSentDate(msg.getSentDate());
             mail.setSize(msg.getSize());
 
-            MailingLogger.log.info("From: " + mail.getSender());
-            MailingLogger.log.info("To: " + mail.getReceiver());
-            MailingLogger.log.info("Subject: " + mail.getSubject());
-            MailingLogger.log.info("Date: "
-                    + sdf_receive.format(mail.getSentDate()));
-            MailingLogger.log.info("Size: " + mail.getSize());
+            // MailingLogger.log.info("From: " + mail.getSender());
+            // MailingLogger.log.info("To: " + mail.getReceiver());
+            // MailingLogger.log.info("Subject: " + mail.getSubject());
+            // MailingLogger.log.info("Date: "
+            // + sdf_receive.format(mail.getSentDate()));
+            // MailingLogger.log.info("Size: " + mail.getSize());
 
             Object content = msg.getContent();
+
             if (content instanceof MimeMultipart) {
                 parseMultipartByMimeType((MimeMultipart) content, mail, ftp);
             }
@@ -169,17 +182,23 @@ public class POP3 {
             MailingLogger.log
                     .info("CONTENT TYPE: " + bodyPart.getContentType());
             MailingLogger.log.info("FILE NAME: " + bodyPart.getFileName());
-            @SuppressWarnings("rawtypes")
-            Enumeration headers = bodyPart.getAllHeaders();
-            while (headers != null && headers.hasMoreElements()) {
-                Header header = (Header) headers.nextElement();
-                MailingLogger.log.info(header.getName() + " ======= "
-                        + header.getValue());
-            }
 
             if (disposition != null
                     && disposition.equalsIgnoreCase(BodyPart.INLINE)) {
                 // TO DO
+                @SuppressWarnings("rawtypes")
+                Enumeration headers = bodyPart.getAllHeaders();
+                while (headers != null && headers.hasMoreElements()) {
+                    Header header = (Header) headers.nextElement();
+                    if(header.getName().equalsIgnoreCase(CONTENT_ID)){
+                        // Content_ID format: <cid_number>, we have to delete < and > syntax
+                        String cid = header.getValue();
+                        cid = "cid:"+ cid.substring(1, cid.length()-1);
+                        mail.setContent(mail.getContent().replace(cid, "test"));
+                        MailingLogger.log.info("After replacing: "+mail.getContent());
+                    }
+
+                }
 
             } else if (disposition != null
                     && disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
@@ -193,6 +212,13 @@ public class POP3 {
                         sdf_today.format(new Date()), mail.getReceiver(),
                         mail.getSender(),
                         sdf_receive.format(mail.getSentDate()));
+                try {
+                    ftp.getStatus();
+                } catch (SocketException e) {
+                    // TODO: handle exception
+                    MailingLogger.log.info("Connection time out, create a new one...");
+                    ftp = FTPConnectionFactory.getDefaultFTPConnection();
+                }
 
                 // FTP UPLOAD
                 if (POP3FTPclient.uploadFile(ftp, ftpDirName, fileName, is)) {

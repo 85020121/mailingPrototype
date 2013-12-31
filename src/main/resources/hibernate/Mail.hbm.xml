@@ -24,13 +24,13 @@
 			<column name="UnitID" length="32" not-null="true" />
 		</property>
 		<property name="subject" type="string">
-			<column name="Subject" length="50" not-null="true" /> <!-- unique="true" /> -->
+			<column name="Subject" length="100" not-null="true" /> <!-- unique="true" /> -->
 		</property>
 		<property name="receiver" type="string">
-			<column name="Receiver" length="30" not-null="true" />
+			<column name="Receiver" length="64" not-null="true" />
 		</property>
 		<property name="sender" type="string">
-			<column name="Sender" length="30" not-null="true" />
+			<column name="Sender" length="64" not-null="true" />
 		</property>
 		<property name="sentDate" type="java.util.Date">
 			<column name="SentDate" />
