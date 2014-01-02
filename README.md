@@ -6,8 +6,10 @@ mailingPrototype
   3. 修改../src/main/resources/hibernate/*.hbm.xml文件中的catalog参数值，catalog="数据库名"
 
 Main在src\main\java\com\hesong\mailingPrototype\QuartzMain.java
+
 Jar运行：
 	1.创建Runnable Jar
+	
 	2.命令行： java -jar runnable.jar ftphostName username password
 
 Eclipse运行：
