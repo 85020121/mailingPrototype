@@ -41,5 +41,8 @@
 		<property name="content" type="string">
 			<column name="Content" />
 		</property>
+		      <property name="attachmtDir" type="string">
+            <column name="AttachmtDir" />
+        </property>
 	</class>
 </hibernate-mapping>

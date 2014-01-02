@@ -96,18 +96,15 @@ public class POP3 {
     }
 
     /**
-     * 返回收件箱中邮件总数，不断开会话
      * 
-     * @param inbox
-     *            POP3收件箱
-     * @return 收件箱中邮件数量
+     * @param account
+     *            邮箱账号
+     * @param ftp
+     *            FTP链接
+     * @return 邮箱中新收到的邮件
      * @throws MessagingException
+     * @throws IOException
      */
-    public static int getInboxCount(POP3Folder inbox) throws MessagingException {
-
-        return inbox.getMessageCount();
-    }
-
     public static List<Mail> getInboxMessages(Account account, FTPClient ftp)
             throws MessagingException, IOException {
         Store store = null;
@@ -174,72 +171,53 @@ public class POP3 {
         MailingLogger.log.info("MULTIPART COUNT = " + multipart.getCount());
         for (int i = 0; i < multipart.getCount(); i++) {
             BodyPart bodyPart = multipart.getBodyPart(i);
-            MailingLogger.log.info("MIMETYPE IS :" + bodyPart.getContentType()
-                    + " in part" + i);
-            MailingLogger.log.info("DESCRIPTION: " + bodyPart.getDescription());
             String disposition = bodyPart.getDisposition();
-            MailingLogger.log.info("DISPOSITION: " + disposition);
-            MailingLogger.log
-                    .info("CONTENT TYPE: " + bodyPart.getContentType());
-            MailingLogger.log.info("FILE NAME: " + bodyPart.getFileName());
+            // MailingLogger.log.info("MIMETYPE IS :" +
+            // bodyPart.getContentType()
+            // + " in part" + i);
+            // MailingLogger.log.info("DESCRIPTION: " +
+            // bodyPart.getDescription());
+            // MailingLogger.log.info("DISPOSITION: " + disposition);
+            // MailingLogger.log
+            // .info("CONTENT TYPE: " + bodyPart.getContentType());
+            // MailingLogger.log.info("FILE NAME: " + bodyPart.getFileName());
 
             if (disposition != null
-                    && disposition.equalsIgnoreCase(BodyPart.INLINE)) {
-                // TO DO
-                @SuppressWarnings("rawtypes")
-                Enumeration headers = bodyPart.getAllHeaders();
-                while (headers != null && headers.hasMoreElements()) {
-                    Header header = (Header) headers.nextElement();
-                    if(header.getName().equalsIgnoreCase(CONTENT_ID)){
-                        // Content_ID format: <cid_number>, we have to delete < and > syntax
-                        String cid = header.getValue();
-                        cid = "cid:"+ cid.substring(1, cid.length()-1);
-                        mail.setContent(mail.getContent().replace(cid, "test"));
-                        MailingLogger.log.info("After replacing: "+mail.getContent());
+                    && (disposition.equalsIgnoreCase(BodyPart.INLINE) || disposition
+                            .equalsIgnoreCase(BodyPart.ATTACHMENT))) {
+                
+                // Replace img url in the content if this part is a inline type
+                if (disposition.equalsIgnoreCase(BodyPart.INLINE)) {
+                    @SuppressWarnings("rawtypes")
+                    Enumeration headers = bodyPart.getAllHeaders();
+                    while (headers != null && headers.hasMoreElements()) {
+                        Header header = (Header) headers.nextElement();
+                        if (header.getName().equalsIgnoreCase(CONTENT_ID)) {
+                            // Content_ID format: <cid_number>, we have to
+                            // delete <
+                            // and > syntax
+                            String cid = header.getValue();
+                            cid = "cid:" + cid.substring(1, cid.length() - 1);
+                            mail.setContent(mail.getContent().replace(cid,
+                                    "test"));
+                        }
+
                     }
-
                 }
-
-            } else if (disposition != null
-                    && disposition.equalsIgnoreCase(BodyPart.ATTACHMENT)) {
-                MailingLogger.log.info("This is a attachment");
 
                 String fileName = decodeText(bodyPart.getFileName());
                 InputStream is = bodyPart.getInputStream();
 
-                String ftpDirName = String.format(
-                        "/Attachment_for_Client/%s/%s/%s/%s/",
-                        sdf_today.format(new Date()), mail.getReceiver(),
-                        mail.getSender(),
-                        sdf_receive.format(mail.getSentDate()));
-                try {
-                    ftp.getStatus();
-                } catch (SocketException e) {
-                    // TODO: handle exception
-                    MailingLogger.log.info("Connection time out, create a new one...");
-                    ftp = FTPConnectionFactory.getDefaultFTPConnection();
-                }
+                String ftpDirName = getAttachmtDirName(mail);
+                mail.setAttachmtDir(ftpDirName);
 
                 // FTP UPLOAD
-                if (POP3FTPclient.uploadFile(ftp, ftpDirName, fileName, is)) {
-                    MailingLogger.log
-                            .info("FFFFFFFFFFFFFTTTTTTTTTTTTTTTTPPPPPPPPPPPPP SUCCESS");
+                if (!uploadAttachmt(ftp, is, ftpDirName, fileName)) {
+                    MailingLogger.log.info(String.format(
+                            "File %s transfer failed with path %s.", fileName,
+                            ftpDirName));
                 }
 
-                // String dirName = String.format(
-                // "D:\\Attachment_for_Client\\%s\\%s\\%s\\%s\\",
-                // sdf_today.format(new Date()), mail.getReceiver(),
-                // mail.getSender(),
-                // sdf_receive.format(mail.getSentDate()));
-                // File folder = new File(dirName);
-                //
-                // if (folder.exists() || folder.mkdirs()) {
-                // MailingLogger.log.info("Attachment dir = " + dirName);
-                // AttachmentPuller.copy(is, new FileOutputStream(dirName
-                // + fileName));
-                // } else {
-                // MailingLogger.log.info("Make dir failed: " + dirName);
-                // }
             } else if (bodyPart.isMimeType(TEXT_HTML_CONTENT)) {
                 // Save text/html content
                 mail.setContent((String) bodyPart.getContent());
@@ -253,6 +231,29 @@ public class POP3 {
             }
         }
 
+    }
+
+    public static boolean uploadAttachmt(FTPClient ftp, InputStream is,
+            String dirName, String fileName) throws IOException {
+        try {
+            ftp.getStatus();
+        } catch (SocketException e) {
+            MailingLogger.log.info("Connection time out, create a new one...");
+            ftp = FTPConnectionFactory.getDefaultFTPConnection();
+            MailingLogger.log.info("Done!");
+        }
+
+        // FTP UPLOAD
+        return POP3FTPclient.uploadFile(ftp, dirName, fileName, is);
+
+    }
+
+    public static String getAttachmtDirName(Mail mail) {
+        String attachmtDirName = String.format(
+                "/Attachment_for_Client/%s/%s/%s/%s/",
+                sdf_today.format(new Date()), mail.getReceiver(),
+                mail.getSender(), sdf_receive.format(mail.getSentDate()));
+        return attachmtDirName;
     }
 
     protected static String decodeText(String text)

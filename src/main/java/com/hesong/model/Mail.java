@@ -16,6 +16,7 @@ public class Mail implements Serializable{
     private Date sentDate;
     private int size;
     private String content;
+    private String attachmtDir;
     
     public Integer getId() {
         return id;
@@ -70,6 +71,12 @@ public class Mail implements Serializable{
     }
     public void setContent(String content) {
         this.content = content;
+    }
+    public String getAttachmtDir() {
+        return attachmtDir;
+    }
+    public void setAttachmtDir(String attachmtDir) {
+        this.attachmtDir = attachmtDir;
     }
 
 }

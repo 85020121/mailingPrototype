@@ -23,6 +23,7 @@ public class PullingMailJob implements Job {
     public static final String ACCOUNT_FLAG = "account";
     public static final String FTP_FLAG = "ftp";
     public static final String MAIL_SAVER_FLAG = "mailSaver";
+    public static final String JOB_GROUP = "PullingMail";
 
     @SuppressWarnings("unchecked")
     @Override
