@@ -1,17 +1,18 @@
 package com.hesong.quartz.runner;
 
 import java.io.IOException;
-import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.net.ftp.FTPClient;
+
+import static org.quartz.TriggerBuilder.*;
+import static org.quartz.CronScheduleBuilder.*;
+
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
-import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
-import org.quartz.TriggerBuilder;
 import org.quartz.impl.StdSchedulerFactory;
 
 import com.hesong.bo.AccountBo;
@@ -25,7 +26,8 @@ public class PullingMailRunner {
     @SuppressWarnings("unchecked")
     public void task(FTPClient ftp) throws IOException, SchedulerException {
 
-        AccountBo accountBo = (AccountBo) Preload.APP_CONTEXT.getBean("accountBo");
+        AccountBo accountBo = (AccountBo) Preload.APP_CONTEXT
+                .getBean("accountBo");
         List<Account> list = (List<Account>) accountBo.getAllAccount();
         MailBo mailBo = (MailBo) Preload.APP_CONTEXT.getBean("mailBo");
 
@@ -43,16 +45,28 @@ public class PullingMailRunner {
             job.getJobDataMap().put(PullingMailJob.FTP_FLAG, ftp);
             job.getJobDataMap().put(PullingMailJob.MAIL_SAVER_FLAG, mailBo);
 
-            long delay = new Date().getTime() + i * 5000l;
+            // long delay = new Date().getTime() + i * 5000l;
 
-            Trigger trigger = TriggerBuilder
-                    .newTrigger()
+            int sec = (i * 7) % 60;
+            int min = a.getInterval() / 60;
+            String cronExpression = String.format("%d 0/%d 15-19 * * ?", sec,
+                    min);
+            MailingLogger.log.info("cronExpression: " + cronExpression);
+
+            // Trigger trigger = TriggerBuilder
+            // .newTrigger()
+            // .withIdentity(jobID, PullingMailJob.JOB_GROUP)
+            // .withSchedule(
+            // SimpleScheduleBuilder.simpleSchedule()
+            // .withIntervalInSeconds(a.getInterval())
+            // .repeatForever()).startAt(new Date(delay))
+            // .build();
+
+            Trigger trigger = newTrigger()
                     .withIdentity(jobID, PullingMailJob.JOB_GROUP)
-                    .withSchedule(
-                            SimpleScheduleBuilder.simpleSchedule()
-                                    .withIntervalInSeconds(a.getInterval())
-                                    .repeatForever()).startAt(new Date(delay))
+                    .withSchedule(cronSchedule(cronExpression)).forJob(job)
                     .build();
+
             // Add job to scheduler
             scheduler.scheduleJob(job, trigger);
         }

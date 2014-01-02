@@ -5,12 +5,20 @@ import java.util.List;
 import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
 
 import com.hesong.dao.MailDao;
+import com.hesong.mailEngine.tools.MailingLogger;
 import com.hesong.model.Mail;
 
 public class MailDaoImpl extends HibernateDaoSupport implements MailDao {
 
     public void save(Mail mail) {
-        getHibernateTemplate().save(mail);
+        try {
+            getHibernateTemplate().save(mail);
+
+        } catch (Exception e) {
+            MailingLogger.log.error("Svae mail error, cuased by: "
+                    + e.toString());
+            e.printStackTrace();
+        }
     }
 
     public void save(List<Mail> list) {
@@ -18,6 +26,8 @@ public class MailDaoImpl extends HibernateDaoSupport implements MailDao {
             getHibernateTemplate().saveOrUpdateAll(list);
 
         } catch (Exception e) {
+            MailingLogger.log.error("Svae mail list error, cuased by: "
+                    + e.toString());
             e.printStackTrace();
         }
     }

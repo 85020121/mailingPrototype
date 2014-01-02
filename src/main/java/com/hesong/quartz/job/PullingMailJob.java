@@ -7,10 +7,12 @@ import java.util.List;
 import javax.mail.MessagingException;
 
 import org.apache.commons.net.ftp.FTPClient;
+import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.PersistJobDataAfterExecution;
 
 import com.hesong.bo.MailBo;
 import com.hesong.mailEngine.pop.POP3;
@@ -18,6 +20,8 @@ import com.hesong.mailEngine.tools.MailingLogger;
 import com.hesong.model.Account;
 import com.hesong.model.Mail;
 
+@PersistJobDataAfterExecution
+@DisallowConcurrentExecution
 public class PullingMailJob implements Job {
 
     public static final String ACCOUNT_FLAG = "account";

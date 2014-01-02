@@ -134,6 +134,7 @@ public class POP3 {
 
             Mail mail = new Mail();
             mail.setUid(uid);
+            MailingLogger.log.info("UID: "+uid);
             mail.setUnitID("1");
             mail.setSender(RegExp.emailAdressMatcher(msg.getFrom()[0]
                     .toString()));
@@ -172,20 +173,20 @@ public class POP3 {
         for (int i = 0; i < multipart.getCount(); i++) {
             BodyPart bodyPart = multipart.getBodyPart(i);
             String disposition = bodyPart.getDisposition();
-            // MailingLogger.log.info("MIMETYPE IS :" +
-            // bodyPart.getContentType()
-            // + " in part" + i);
-            // MailingLogger.log.info("DESCRIPTION: " +
-            // bodyPart.getDescription());
-            // MailingLogger.log.info("DISPOSITION: " + disposition);
-            // MailingLogger.log
-            // .info("CONTENT TYPE: " + bodyPart.getContentType());
-            // MailingLogger.log.info("FILE NAME: " + bodyPart.getFileName());
+            
+            MailingLogger.log.debug("MIMETYPE IS :" + bodyPart.getContentType()
+                    + " in part" + i);
+            MailingLogger.log
+                    .debug("DESCRIPTION: " + bodyPart.getDescription());
+            MailingLogger.log.debug("DISPOSITION: " + disposition);
+            MailingLogger.log.debug("CONTENT TYPE: "
+                    + bodyPart.getContentType());
+            MailingLogger.log.debug("FILE NAME: " + bodyPart.getFileName());
 
             if (disposition != null
                     && (disposition.equalsIgnoreCase(BodyPart.INLINE) || disposition
                             .equalsIgnoreCase(BodyPart.ATTACHMENT))) {
-                
+
                 // Replace img url in the content if this part is a inline type
                 if (disposition.equalsIgnoreCase(BodyPart.INLINE)) {
                     @SuppressWarnings("rawtypes")
@@ -194,8 +195,7 @@ public class POP3 {
                         Header header = (Header) headers.nextElement();
                         if (header.getName().equalsIgnoreCase(CONTENT_ID)) {
                             // Content_ID format: <cid_number>, we have to
-                            // delete <
-                            // and > syntax
+                            // delete < and > syntax
                             String cid = header.getValue();
                             cid = "cid:" + cid.substring(1, cid.length() - 1);
                             mail.setContent(mail.getContent().replace(cid,
@@ -213,9 +213,11 @@ public class POP3 {
 
                 // FTP UPLOAD
                 if (!uploadAttachmt(ftp, is, ftpDirName, fileName)) {
-                    MailingLogger.log.info(String.format(
-                            "File %s transfer failed with path %s.", fileName,
-                            ftpDirName));
+                    MailingLogger.log
+                            .error(String
+                                    .format("File %s transfer failed with FTP server directory path %s, sent by: %s, subject: %s.",
+                                            fileName, ftpDirName,
+                                            mail.getSender(), mail.getSubject()));
                 }
 
             } else if (bodyPart.isMimeType(TEXT_HTML_CONTENT)) {
