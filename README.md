@@ -7,10 +7,10 @@ mailingPrototype
 
 Jar运行：
 	1.创建Runnable Jar
-	2.命令行： java -jar runnable.jar ftphostName username passwor
+	2.命令行： java -jar runnable.jar ftphostName username password
 
 Eclipse运行：
-	在run configuration中添加arguments值：ftphostName username passwor
+	在run configuration中添加arguments值：ftphostName username password
 	
 所有附件都会按照命名规则上传到FTP服务器根目录下Attachment_for_Client文件夹中
 
