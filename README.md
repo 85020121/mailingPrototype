@@ -3,9 +3,7 @@ mailingPrototype
 
   1. 请先运行../src/main/resources/sql/中的sql文件创建表格
   2. 配置../src/main/resources/properties/database.properties属性,
-  3. 修改../src/main/resources/hibernate/*.hbm.xml文件中的catalog参数值
-	    例：  <class name="com.hesong.mail.model.Mail" table="cc_mail_t_inbox" catalog="mail">
-	   catalog参数，catalog="数据库名"
+  3. 修改../src/main/resources/hibernate/*.hbm.xml文件中的catalog参数值，catalog="数据库名"
 
 Jar运行：
 	1.创建Runnable Jar
